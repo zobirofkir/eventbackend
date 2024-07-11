@@ -5,15 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
+        $this->authorize("viewAny", User::class);
         return UserResource::collection(
             User::all()
         );
@@ -24,16 +27,24 @@ class UserController extends Controller
      */
     public function store(UserRequest $request)
     {
-        return UserResource::make(
-            User::create($request->validated())
-        );
-    }
+        $this->authorize("create", User::class);
 
+        $user = User::create($request->validated());
+
+        if ($request->role) {
+            $user->assignRole($request->role);
+        }
+
+        return UserResource::make($user);
+    }
+    
     /**
      * Display the specified resource.
      */
     public function show(User $user)
     {
+        $this->authorize("view", $user);
+
         return UserResource::make($user);
     }
 
@@ -42,7 +53,14 @@ class UserController extends Controller
      */
     public function update(UserRequest $request, User $user)
     {
+        $this->authorize("update", $user);
+
         $user->update($request->validated());
+
+        if ($user->role)
+        {
+            $user->assignRole($user->role);
+        }
         return UserResource::make(
             $user->refresh()
         );
@@ -53,6 +71,8 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        $this->authorize("delete", $user);
+
         return $user->delete();
     }
 }
